@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Plano de Desempenho Físico</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 30px;
+    background:
+        linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+        url("https://images.unsplash.com/photo-1599058917212-d750089bc07b");
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
+
+/* CABEÇALHO COM IMAGEM DE MUSCULAÇÃO */
+h1 {
+    text-align: center;
+    color: #fff;
+    margin-bottom: 30px;
+    font-size: 34px;
+    padding: 40px 20px;
+    border-radius: 16px;
+
+    background:
+      linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+      url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1600&q=80");
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+}
+
+.panel {
+    background: rgba(255,255,255,0.96);
+    padding: 18px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+.panel h2 {
+    margin-top: 0;
+    color: #2e7d32;
+}
+
+.row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+input {
+    padding: 8px 10px;
+    width: 115px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #43a047, #2e7d32);
+    color: #fff;
+    font-weight: 600;
+}
+
+.status { font-weight: bold; margin-top: 6px; }
+.ok { color: #2e7d32; }
+.bad { color: #c62828; }
+
+.week-box {
+    background: #f1f8f4;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-top: 10px;
+}
+
+.grafico-box {
+    width: 160px;
+    height: 110px;
+}
+canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.footer-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>Plano de Desempenho Físico</h1>
+
+<!-- MUSCULAÇÃO -->
+<div class="panel">
+<h2>🏋️ Musculação</h2>
+<div class="row">
+    <input id="muscuAtual" type="number" placeholder="Dias feitos">
+    <input id="muscuMeta" type="number" placeholder="Meta">
+    <button onclick="iniciarSemana('muscu')">Iniciar</button>
+    <button onclick="concluirSemana('muscu')">Concluir</button>
+    <div class="grafico-box"><canvas id="graficoMuscu"></canvas></div>
+</div>
+<div id="muscuSemanas" class="week-box"></div>
+</div>
+
+<!-- CARDIO -->
+<div class="panel">
+<h2>🏃 Cardio</h2>
+<div class="row">
+    <input id="cardioAtual" type="number" placeholder="Dias feitos">
+    <input id="cardioMeta" type="number" placeholder="Meta">
+    <button onclick="iniciarSemana('cardio')">Iniciar</button>
+    <button onclick="concluirSemana('cardio')">Concluir</button>
+    <div class="grafico-box"><canvas id="graficoCardio"></canvas></div>
+</div>
+<div id="cardioSemanas" class="week-box"></div>
+</div>
+
+<!-- JEJUM -->
+<div class="panel">
+<h2>⏳ Jejum</h2>
+<div class="row">
+    <input id="jejumAtual" type="number" placeholder="Dias jejum">
+    <input id="jejumMeta" type="number" placeholder="Meta">
+    <button onclick="iniciarSemana('jejum')">Iniciar</button>
+    <button onclick="concluirSemana('jejum')">Concluir</button>
+    <div class="grafico-box"><canvas id="graficoJejum"></canvas></div>
+</div>
+<div id="jejumSemanas" class="week-box"></div>
+</div>
+
+<!-- HIDRATAÇÃO -->
+<div class="panel">
+<h2>💧 Hidratação</h2>
+<input id="aguaAtual" type="number" step="0.1" placeholder="Litros">
+<input id="aguaMeta" type="number" step="0.1" placeholder="Meta">
+<div id="aguaStatus" class="status"></div>
+</div>
+
+<!-- PESO -->
+<div class="panel">
+<h2>⚖️ Controle de Peso</h2>
+<input id="pesoInicial" type="number" placeholder="Peso inicial">
+<input id="pesoAtual" type="number" placeholder="Peso atual">
+<input id="metaPeso" type="number" placeholder="Meta perda">
+<div id="pesoStatus" class="status"></div>
+</div>
+
+<div class="footer-actions">
+<button onclick="salvar()">Salvar dados</button>
+<button onclick="zerar()">Zerar controle</button>
+</div>
+
+</div>
+
+<script>
+let dados = JSON.parse(localStorage.getItem("planoCompleto")) || {
+    muscu:{semanaAtual:1,historico:[]},
+    cardio:{semanaAtual:1,historico:[]},
+    jejum:{semanaAtual:1,historico:[]}
+};
+let graficos = {};
+
+function iniciarSemana(t){ if(dados[t].semanaAtual<=4) document.getElementById(t+"Atual").value=0; }
+
+function concluirSemana(t){
+    const a=+document.getElementById(t+"Atual").value;
+    const m=+document.getElementById(t+"Meta").value;
+    if(dados[t].semanaAtual>4) return;
+    dados[t].historico.push({semana:dados[t].semanaAtual,status:a>=m});
+    dados[t].semanaAtual++;
+    salvar();
+}
+
+function renderizarSemanas(){
+["muscu","cardio","jejum"].forEach(t=>{
+    const box=document.getElementById(t+"Semanas");
+    box.innerHTML="<strong>Status mensal:</strong><br>";
+    dados[t].historico.forEach(s=>{
+        box.innerHTML+=`Semana ${s.semana}: <span class="${s.status?"ok":"bad"}">${s.status?"Meta batida 😀":"Fora 😞"}</span><br>`;
+    });
+});
+}
+
+function renderizarGraficos(){
+["muscu","cardio","jejum"].forEach(t=>{
+    const ctx=document.getElementById("grafico"+t.charAt(0).toUpperCase()+t.slice(1));
+    const vals=[1,2,3,4].map(s=>dados[t].historico.find(h=>h.semana===s)?.status?1:0);
+    if(graficos[t]) graficos[t].destroy();
+    graficos[t]=new Chart(ctx,{
+        type:"bar",
+        data:{labels:["S1","S2","S3","S4"],datasets:[{data:vals,backgroundColor:"#43a047"}]},
+        options:{
+            plugins:{legend:{display:false}},
+            scales:{y:{min:0,max:1,ticks:{stepSize:1,callback:v=>v?"😀":"😞"}}}
+        }
+    });
+});
+}
+
+function avaliarExtras(){
+    aguaStatus.textContent=aguaAtual.value>=aguaMeta.value?"Meta batida 😀":"Fora 😞";
+    aguaStatus.className="status "+(aguaAtual.value>=aguaMeta.value?"ok":"bad");
+    const perda=pesoInicial.value-pesoAtual.value;
+    pesoStatus.textContent=`Perda: ${perda||0} kg`;
+    pesoStatus.className="status "+(perda>=metaPeso.value?"ok":"bad");
+}
+
+function salvar(){
+    localStorage.setItem("planoCompleto",JSON.stringify(dados));
+    localStorage.setItem("extras",JSON.stringify({
+        aguaAtual:aguaAtual.value,aguaMeta:aguaMeta.value,
+        pesoInicial:pesoInicial.value,pesoAtual:pesoAtual.value,metaPeso:metaPeso.value
+    }));
+    renderizarSemanas();renderizarGraficos();avaliarExtras();
+}
+
+function carregar(){
+    const e=JSON.parse(localStorage.getItem("extras"));
+    if(e) Object.keys(e).forEach(id=>document.getElementById(id).value=e[id]);
+    renderizarSemanas();renderizarGraficos();avaliarExtras();
+}
+
+function zerar(){
+    if(confirm("Deseja apagar todos os dados?")){
+        localStorage.clear();location.reload();
+    }
+}
+
+carregar();
+</script>
+
+</body>
+</html>
