@@ -24,7 +24,6 @@ body {
     margin: auto;
 }
 
-/* CABEÇALHO COM IMAGEM DE MUSCULAÇÃO */
 h1 {
     text-align: center;
     color: #fff;
@@ -32,7 +31,6 @@ h1 {
     font-size: 34px;
     padding: 40px 20px;
     border-radius: 16px;
-
     background:
       linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
       url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1600&q=80");
@@ -94,6 +92,7 @@ button {
     width: 160px;
     height: 110px;
 }
+
 canvas {
     width: 100% !important;
     height: 100% !important;
@@ -142,6 +141,7 @@ canvas {
 <!-- JEJUM -->
 <div class="panel">
 <h2>⏳ Jejum</h2>
+
 <div class="row">
     <input id="jejumAtual" type="number" placeholder="Dias jejum">
     <input id="jejumMeta" type="number" placeholder="Meta">
@@ -149,6 +149,15 @@ canvas {
     <button onclick="concluirSemana('jejum')">Concluir</button>
     <div class="grafico-box"><canvas id="graficoJejum"></canvas></div>
 </div>
+
+<div class="row" style="margin-top:10px">
+    <input id="jejumInicio" type="datetime-local">
+    <button onclick="iniciarJejumTimer()">▶️ Iniciar</button>
+    <button onclick="concluirJejumTimer()">⏹️ Concluir</button>
+    <button onclick="zerarJejumTimer()">🔄 Zerar</button>
+    <div id="jejumTimer" class="status"></div>
+</div>
+
 <div id="jejumSemanas" class="week-box"></div>
 </div>
 
@@ -182,9 +191,15 @@ let dados = JSON.parse(localStorage.getItem("planoCompleto")) || {
     cardio:{semanaAtual:1,historico:[]},
     jejum:{semanaAtual:1,historico:[]}
 };
-let graficos = {};
 
-function iniciarSemana(t){ if(dados[t].semanaAtual<=4) document.getElementById(t+"Atual").value=0; }
+let graficos = {};
+let jejumInterval = null;
+let jejumTimerData = JSON.parse(localStorage.getItem("jejumTimer")) || null;
+
+function iniciarSemana(t){
+    if(dados[t].semanaAtual<=4)
+        document.getElementById(t+"Atual").value=0;
+}
 
 function concluirSemana(t){
     const a=+document.getElementById(t+"Atual").value;
@@ -193,6 +208,41 @@ function concluirSemana(t){
     dados[t].historico.push({semana:dados[t].semanaAtual,status:a>=m});
     dados[t].semanaAtual++;
     salvar();
+}
+
+function iniciarJejumTimer(){
+    const inicio = document.getElementById("jejumInicio").value;
+    if(!inicio) return alert("Selecione data e hora de início");
+    jejumTimerData = {inicio, ativo:true};
+    localStorage.setItem("jejumTimer", JSON.stringify(jejumTimerData));
+    atualizarJejumTimer();
+    jejumInterval = setInterval(atualizarJejumTimer,1000);
+}
+
+function concluirJejumTimer(){
+    if(!jejumTimerData) return;
+    jejumTimerData.ativo=false;
+    localStorage.setItem("jejumTimer", JSON.stringify(jejumTimerData));
+    clearInterval(jejumInterval);
+}
+
+function zerarJejumTimer(){
+    clearInterval(jejumInterval);
+    jejumTimerData=null;
+    localStorage.removeItem("jejumTimer");
+    document.getElementById("jejumTimer").textContent="";
+}
+
+function atualizarJejumTimer(){
+    if(!jejumTimerData || !jejumTimerData.ativo) return;
+    const inicio=new Date(jejumTimerData.inicio);
+    const agora=new Date();
+    let diff=Math.floor((agora-inicio)/1000);
+    const h=String(Math.floor(diff/3600)).padStart(2,"0");
+    diff%=3600;
+    const m=String(Math.floor(diff/60)).padStart(2,"0");
+    const s=String(diff%60).padStart(2,"0");
+    document.getElementById("jejumTimer").textContent=`⏱️ ${h}:${m}:${s}`;
 }
 
 function renderizarSemanas(){
@@ -241,6 +291,10 @@ function salvar(){
 function carregar(){
     const e=JSON.parse(localStorage.getItem("extras"));
     if(e) Object.keys(e).forEach(id=>document.getElementById(id).value=e[id]);
+    if(jejumTimerData?.ativo){
+        atualizarJejumTimer();
+        jejumInterval=setInterval(atualizarJejumTimer,1000);
+    }
     renderizarSemanas();renderizarGraficos();avaliarExtras();
 }
 
